@@ -8,18 +8,25 @@ import useTheme from "@/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
 import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
 import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { isEnabled } from "react-native/Libraries/Performance/Systrace";
 
 type Todo = Doc<"todos">;
 
 export default function Index() {
-  const { toggleDarkMode, colors } = useTheme();
+  const { colors } = useTheme();
+
+  const [editingId, setEditingId] = useState<Id<"todos"> | null>();
+  const [editText, setEditText] = useState("");
+
   const homeStyles = createHomeStyles(colors);
 
   const todos = useQuery(api.todos.getTodos);
   const toggleTodo = useMutation(api.todos.toggleTodo);
   const deleteTodo = useMutation(api.todos.deleteTodo);
+  const updateTodo = useMutation(api.todos.updateTodo);
   const isLoading = todos === undefined;
 
   const handleToggleTodo = async (id: Id<"todos">) => {
@@ -42,7 +49,28 @@ export default function Index() {
     ]);
   };
 
+  const handleEditTodo = (todo: Todo) => {
+    setEditText(todo.text);
+    setEditText(todo._id);
+  };
+  const handleSaveTodo = async () => {
+    if (editingId) {
+      try {
+        await updateTodo({ id: editingId, text: editText.trim() });
+        setEditText("");
+        setEditingId(null);
+      } catch (error) {
+        console.log("error adding a todo ", error);
+        Alert.alert("Error", "Failed to Add todo");
+      }
+    }
+  };
+  const handleCancelEdit = () => {
+    setEditText("");
+    setEditingId(null);
+  };
   const renderTodoItem = ({ item }: { item: Todo }) => {
+    const isEditing = editingId === item._id
     return (
       <View style={homeStyles.todoItemWrapper}>
         <LinearGradient
@@ -76,7 +104,8 @@ export default function Index() {
               )}
             </LinearGradient>
           </TouchableOpacity>
-
+          
+          {isEditing ? ():()}
           <View style={homeStyles.todoTextContainer}>
             <Text
               style={[
